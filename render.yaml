@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: fresh-guard
+    env: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: freshguard-db
+
+databases:
+  - name: freshguard-db
+    plan: free
+    region: oregon
+    databaseName: freshguard
