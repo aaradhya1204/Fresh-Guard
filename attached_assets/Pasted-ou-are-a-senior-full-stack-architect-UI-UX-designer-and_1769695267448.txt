@@ -1,0 +1,169 @@
+ou are a senior full-stack architect, UI/UX designer, and system thinker.
+Your task is to design and generate a production-grade dynamic web application called “Smart Label Checker” with clean, modern UI and scalable architecture.
+
+Mission
+
+Build a QR-based smart shopping ecosystem that helps users make informed purchasing decisions by showing nutritional data, expiry alerts, ingredients, and post-purchase reminders, while giving admins full control over products and QR generation.
+
+The system must look real-world deployable, not a demo toy.
+
+User Roles
+1. Admin
+
+Admin login credentials (hardcoded for demo):
+
+Email: admin@gmail.com
+
+Password: admin
+
+Admin dashboard features:
+
+Add new products
+
+Edit / delete products
+
+Enter product details:
+
+Product name
+
+Price
+
+Manufacturing date
+
+Expiry date
+
+Nutritional values
+
+Top 2 ingredients
+
+Generate unique QR codes per product
+
+QR codes must encode a product ID linked to database
+
+2. User
+
+User signup / login system
+
+Each user has a unique User ID (Aadhaar-like numeric ID for simulation)
+
+User flow:
+
+User logs into mobile web app
+
+Enters their User ID
+
+Shopping trolley initializes with that User ID
+
+Smart Trolley Simulation
+
+A dedicated trolley screen UI (web-based) with:
+
+Camera access to scan QR codes
+
+Displays scanned product details:
+
+Product name
+
+Price
+
+Nutritional values
+
+Top 2 ingredients
+
+Manufacturing date
+
+Expiry date
+
+If product is expired:
+
+Show real-time alert message on trolley screen
+
+Post-Purchase Expiry Intelligence
+
+After shopping:
+
+Products are saved to the user’s purchase history
+
+If a purchased product is expiring soon:
+
+Example: Milk expires in 1 day
+
+Send expiry alert ONLY to the user’s phone dashboard
+
+NOT on the trolley screen
+
+Alerts should be dynamic and time-based
+
+Technical Requirements
+
+Dynamic website (NO static pages)
+
+Tech stack suggestion:
+
+Frontend: HTML, CSS, JavaScript (modern responsive UI)
+
+Backend: Node.js / Python (Flask or Express)
+
+Database: MongoDB / SQLite / JSON for demo
+
+Use MVC or clean modular architecture
+
+QR scanning via camera API
+
+Authentication system
+
+State management for:
+
+Active trolley session
+
+User purchase history
+
+UI / UX Requirements
+
+Clean, minimal, modern design
+
+Retail-grade UI (think smart supermarket, not school project)
+
+Clear visual hierarchy
+
+Icons, cards, subtle animations
+
+Mobile-first for user app
+
+Separate layouts for:
+
+Admin dashboard
+
+User phone app
+
+Trolley screen
+
+Deliverables
+
+Complete system architecture explanation
+
+Database schema
+
+Full frontend + backend code
+
+Authentication logic
+
+QR generation and scanning logic
+
+Expiry alert logic
+
+Clean UI with reusable components
+
+Demo-ready setup instructions
+
+Mindset
+
+Treat this as a startup MVP, not a college assignment
+
+Prioritize clarity, reliability, and scalability
+
+Avoid unnecessary complexity
+
+Everything must be explainable to judges in under 2 minutes
+
+Build this system to its maximum potential with production-level thinking.

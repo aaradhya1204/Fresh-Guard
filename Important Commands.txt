@@ -1,0 +1,2 @@
+set DATABASE_URL=postgresql://postgres:12041204aaradhya@localhost:5432/freshguard
+npm run dev
