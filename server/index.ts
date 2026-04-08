@@ -82,7 +82,7 @@ app.use((req, res, next) => {
 // =====================
 (async () => {
   try {
-    log("Starting server initialization... (v2)");
+    log("Starting server initialization... (v3)");
     
     log("Registering routes...");
     await registerRoutes(httpServer, app);
