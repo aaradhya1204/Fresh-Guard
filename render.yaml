@@ -12,9 +12,12 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase: freshguard-db
+    healthCheckPath: /
+    healthCheckTimeout: 30
 
 databases:
   - name: freshguard-db
     plan: free
     region: oregon
     databaseName: freshguard
+    databaseUser: postgres

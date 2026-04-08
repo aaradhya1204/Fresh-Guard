@@ -1,2 +1,3 @@
 set DATABASE_URL=postgresql://postgres:12041204aaradhya@localhost:5432/freshguard
 npm run dev
+https://fresh-guard-main-production.up.railway.app
