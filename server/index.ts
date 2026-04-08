@@ -74,35 +74,49 @@ app.use((req, res, next) => {
 // BOOTSTRAP SERVER
 // =====================
 (async () => {
-  await registerRoutes(httpServer, app);
+  try {
+    log("Starting server initialization...");
+    
+    log("Registering routes...");
+    await registerRoutes(httpServer, app);
+    log("Routes registered successfully");
 
-  // ---------- ERROR HANDLER ----------
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // ---------- ERROR HANDLER ----------
+    app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
+      console.error("Internal Server Error:", err);
 
-    if (res.headersSent) {
-      return next(err);
+      if (res.headersSent) {
+        return next(err);
+      }
+
+      return res.status(status).json({ message });
+    });
+
+    // ---------- STATIC / VITE ----------
+    log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    if (process.env.NODE_ENV === "production") {
+      log("Setting up static file serving...");
+      serveStatic(app);
+      log("Static file serving configured");
+    } else {
+      log("Setting up Vite dev middleware...");
+      const { setupVite } = await import("./vite");
+      await setupVite(httpServer, app);
+      log("Vite dev middleware configured");
     }
 
-    return res.status(status).json({ message });
-  });
+    // ---------- START SERVER ----------
+    const port = parseInt(process.env.PORT || "5000", 10);
 
-  // ---------- STATIC / VITE ----------
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
+    //  LISTEN ON ALL INTERFACES FOR CONTAINER DEPLOYMENT
+    httpServer.listen(port, "0.0.0.0", () => {
+      log(`serving on http://0.0.0.0:${port}`);
+    });
+  } catch (error) {
+    console.error("Fatal error during server startup:", error);
+    process.exit(1);
   }
-
-  // ---------- START SERVER ----------
-  const port = parseInt(process.env.PORT || "5000", 10);
-
-  //  LISTEN ON ALL INTERFACES FOR CONTAINER DEPLOYMENT
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`serving on http://0.0.0.0:${port}`);
-  });
 })();
