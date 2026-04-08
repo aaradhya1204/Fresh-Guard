@@ -101,8 +101,8 @@ app.use((req, res, next) => {
   // ---------- START SERVER ----------
   const port = parseInt(process.env.PORT || "5000", 10);
 
-  //  WINDOWS-SAFE LISTEN (THIS IS THE FIX)
-  httpServer.listen(port, () => {
-    log(`serving on http://localhost:${port}`);
+  //  LISTEN ON ALL INTERFACES FOR CONTAINER DEPLOYMENT
+  httpServer.listen(port, "0.0.0.0", () => {
+    log(`serving on http://0.0.0.0:${port}`);
   });
 })();
