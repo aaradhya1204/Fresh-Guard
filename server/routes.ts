@@ -14,6 +14,40 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const allowCrossSiteCookies = allowedOrigins.length > 0;
+
+  // =====================
+  // CORS (UI on Vercel, API on Railway, etc.)
+  // =====================
+  app.use((req, res, next) => {
+    const origin = req.headers.origin as string | undefined;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+      );
+      const reqHeaders = req.headers["access-control-request-headers"];
+      res.setHeader(
+        "Access-Control-Allow-Headers",
+        typeof reqHeaders === "string" ? reqHeaders : "Content-Type",
+      );
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+
+    next();
+  });
+
   // =====================
   // SESSION SETUP
   // =====================
@@ -22,7 +56,11 @@ export async function registerRoutes(
       secret: process.env.SESSION_SECRET || "smart-label-secret",
       resave: false,
       saveUninitialized: false,
-      cookie: { maxAge: 24 * 60 * 60 * 1000 },
+      cookie: {
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: allowCrossSiteCookies ? "none" : "lax",
+        secure: allowCrossSiteCookies || process.env.NODE_ENV === "production",
+      },
       store: new SessionStore({
         checkPeriod: 24 * 60 * 60 * 1000,
       }),

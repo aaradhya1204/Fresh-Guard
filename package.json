@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "DATABASE_URL=postgresql://postgres:postgres@localhost/freshguard tsx server/index.ts",
     "build": "tsx script/build.ts",
+    "build:client": "vite build",
+    "vercel-build": "npm run build:client",
     "start": "node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "postinstall": "npm run build"
+    "deploy:vercel": "vercel deploy --prod",
+    "deploy:railway": "railway up"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -82,6 +85,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@railway/cli": "^4.36.1",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.18",
     "@types/connect-pg-simple": "^7.0.3",
@@ -101,6 +105,7 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.5",
     "typescript": "5.6.3",
+    "vercel": "^39.4.2",
     "vite": "^7.3.0"
   },
   "overrides": {

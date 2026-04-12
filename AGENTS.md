@@ -8,6 +8,13 @@ FreshGuard ("Smart Label Checker") is a demo full-stack app for smart grocery sh
 - Shoppers scan a product QR code (camera or manual entry), get expiry warnings, and add items to a trolley.
 - Checkout records purchases; the user dashboard shows purchase history with expiry/freshness status.
 
+## Deploy (Vercel + Railway)
+Typical split: **Railway** runs Postgres + the Node server (`npm run build` then `npm run start`). **Vercel** hosts the static Vite app (`vercel-build` / `build:client` → `dist/public`).
+
+- Railway service env: `DATABASE_URL` (from Railway Postgres), `NODE_ENV=production`, `SESSION_SECRET` (random string), `PORT` (Railway sets automatically).
+- For a separate UI origin, set **`CLIENT_ORIGIN`** on Railway to your Vercel URL(s), comma-separated if you use preview + production (e.g. `https://app.vercel.app,https://your-app-xxx.vercel.app`). This enables CORS and `SameSite=None` session cookies so `credentials: "include"` works cross-site.
+- Vercel project env: **`VITE_API_BASE_URL`** = your Railway public HTTPS origin with **no** trailing slash (e.g. `https://your-service.up.railway.app`). After the first deploy, run `npm run db:push` locally with `DATABASE_URL` pointed at Railway Postgres to apply the schema.
+
 ## Common dev commands
 All commands are run from the repo root.
 

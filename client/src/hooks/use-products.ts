@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type InsertProduct } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/apiBase";
 
 export function useProducts() {
   const queryClient = useQueryClient();
@@ -9,7 +10,7 @@ export function useProducts() {
   const list = useQuery({
     queryKey: [api.products.list.path],
     queryFn: async () => {
-      const res = await fetch(api.products.list.path, { credentials: 'include' });
+      const res = await fetch(apiUrl(api.products.list.path), { credentials: 'include' });
       if (!res.ok) throw new Error("Failed to fetch products");
       return api.products.list.responses[200].parse(await res.json());
     },
@@ -17,7 +18,7 @@ export function useProducts() {
 
   const create = useMutation({
     mutationFn: async (data: InsertProduct) => {
-      const res = await fetch(api.products.create.path, {
+      const res = await fetch(apiUrl(api.products.create.path), {
         method: api.products.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -49,7 +50,7 @@ export function useProducts() {
 
   const remove = useMutation({
     mutationFn: async (id: number) => {
-      const url = buildUrl(api.products.delete.path, { id });
+      const url = apiUrl(buildUrl(api.products.delete.path, { id }));
       const res = await fetch(url, { method: api.products.delete.method, credentials: 'include' });
 
       if (!res.ok) {
@@ -78,7 +79,7 @@ export function useProductByQr(qrCodeId?: string) {
     queryKey: [api.products.getByQr.path, qrCodeId],
     queryFn: async () => {
       if (!qrCodeId) return null;
-      const url = buildUrl(api.products.getByQr.path, { qrCodeId });
+      const url = apiUrl(buildUrl(api.products.getByQr.path, { qrCodeId }));
       const res = await fetch(url, { credentials: 'include' });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch product");
