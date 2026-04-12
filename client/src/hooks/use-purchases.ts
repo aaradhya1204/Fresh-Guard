@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/apiBase";
 
 export function usePurchases() {
   const queryClient = useQueryClient();
@@ -9,7 +10,7 @@ export function usePurchases() {
   const list = useQuery({
     queryKey: [api.purchases.list.path],
     queryFn: async () => {
-      const res = await fetch(api.purchases.list.path, { credentials: 'include' });
+      const res = await fetch(apiUrl(api.purchases.list.path), { credentials: 'include' });
       if (!res.ok) throw new Error("Failed to fetch purchases");
       return api.purchases.list.responses[200].parse(await res.json());
     },
@@ -17,7 +18,7 @@ export function usePurchases() {
 
   const create = useMutation({
     mutationFn: async (productIds: number[]) => {
-      const res = await fetch(api.purchases.create.path, {
+      const res = await fetch(apiUrl(api.purchases.create.path), {
         method: api.purchases.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productIds }),

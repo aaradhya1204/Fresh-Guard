@@ -11,7 +11,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase: freshguard-db
+        fromDatabase:
+          name: freshguard-db
+          property: connectionString
     healthCheckPath: /
     healthCheckTimeout: 30
 
