@@ -7,7 +7,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 
 export default function UserDashboard() {
-  const { purchases, isLoading } = usePurchases();
+  const { purchases, isLoading, remove } = usePurchases();
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredPurchases = purchases?.filter((item) =>
@@ -53,7 +53,11 @@ export default function UserDashboard() {
                       Purchased {format(new Date(purchasedAt), "MMM d")}
                     </div>
                   ) : null}
-                  <ProductCard product={(item as any).product} />
+                  <ProductCard 
+                    product={(item as any).product} 
+                    onDemolished={() => remove.mutate((item as any).purchase.id)}
+                    isDemolishing={remove.isPending && remove.variables === (item as any).purchase.id}
+                  />
                 </div>
               );
             })}

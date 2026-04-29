@@ -22,6 +22,7 @@ export const products = pgTable("products", {
   nutritionalInfo: jsonb("nutritional_info").notNull(),
   ingredients: text("ingredients").array(), // Array of strings
   qrCodeId: text("qr_code_id").notNull().unique(), // The ID encoded in the QR
+  batchId: text("batch_id").default("Standard Batch"), // The batch identifier
 });
 
 export const purchases = pgTable("purchases", {

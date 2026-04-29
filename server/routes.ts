@@ -75,7 +75,11 @@ export async function registerRoutes(
     res.status(401).json({ message: "Unauthorized" });
   };
 
+  // isAdmin now checks authentication FIRST, then role
   const isAdmin = (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     if (req.session.role === "admin") return next();
     res.status(403).json({ message: "Admin access required" });
   };
@@ -128,45 +132,80 @@ export async function registerRoutes(
       req.session.role = "user";
       return res.json(user);
 
-    } catch {
+    } catch (err) {
+      console.error("Login error:", err);
       res.status(400).json({ message: "Invalid request" });
     }
   });
 
   app.post(api.auth.logout.path, (req, res) => {
-    req.session.destroy(() => res.json({ message: "Logged out" }));
+    try {
+      req.session.destroy(() => res.json({ message: "Logged out" }));
+    } catch (err) {
+      console.error("Logout error:", err);
+      res.json({ message: "Logged out" });
+    }
   });
 
   app.get(api.auth.me.path, async (req, res) => {
-    if (!req.session.userId) return res.status(401).send();
-    const user = await storage.getUser(req.session.userId);
-    if (!user) return res.status(401).send();
-    res.json(user);
+    try {
+      if (!req.session.userId) return res.status(401).send();
+      const user = await storage.getUser(req.session.userId);
+      if (!user) return res.status(401).send();
+      res.json(user);
+    } catch (err) {
+      console.error("Auth /me error:", err);
+      res.status(500).json({ message: "Server error" });
+    }
   });
 
   // =====================
   // PRODUCT ROUTES
   // =====================
-  app.get(api.products.list.path, async (_, res) => {
-    res.json(await storage.getProducts());
+  app.get(api.products.list.path, async (_req, res) => {
+    try {
+      res.json(await storage.getProducts());
+    } catch (err) {
+      console.error("Error listing products:", err);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
   });
 
   app.get(api.products.get.path, async (req, res) => {
-    const product = await storage.getProduct(Number(req.params.id));
-    if (!product) return res.status(404).json({ message: "Not found" });
-    res.json(product);
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid product ID" });
+      const product = await storage.getProduct(id);
+      if (!product) return res.status(404).json({ message: "Not found" });
+      res.json(product);
+    } catch (err) {
+      console.error("Error getting product:", err);
+      res.status(500).json({ message: "Server error" });
+    }
   });
 
   app.get(api.products.getByQr.path, async (req, res) => {
-    const qrCodeId = String(req.params.qrCodeId);
-    const product = await storage.getProductByQr(qrCodeId);
-    if (!product) return res.status(404).json({ message: "Not found" });
-    res.json(product);
+    try {
+      const qrCodeId = String(req.params.qrCodeId);
+      if (!qrCodeId) return res.status(400).json({ message: "QR code ID required" });
+      const product = await storage.getProductByQr(qrCodeId);
+      if (!product) return res.status(404).json({ message: "Not found" });
+      res.json(product);
+    } catch (err) {
+      console.error("Error looking up QR:", err);
+      res.status(500).json({ message: "Server error" });
+    }
   });
 
   app.post(api.products.create.path, isAdmin, async (req, res) => {
     try {
       const input = api.products.create.input.parse(req.body);
+
+      // Check for duplicate QR code BEFORE insert
+      const existingQr = await storage.getProductByQr(input.qrCodeId);
+      if (existingQr) {
+        return res.status(409).json({ message: "A product with this QR code ID already exists" });
+      }
 
       const product = await storage.createProduct({
         ...input,
@@ -174,7 +213,7 @@ export async function registerRoutes(
 
       res.status(201).json(product);
     } catch (err) {
-      console.error("Error creating product:", err); // Log the full error
+      console.error("Error creating product:", err);
       if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
       } else {
@@ -184,37 +223,92 @@ export async function registerRoutes(
   });
 
   app.put(api.products.update.path, isAdmin, async (req, res) => {
-    const input = api.products.update.input.parse(req.body);
-    const product = await storage.updateProduct(
-      Number(req.params.id),
-      input
-    );
-    res.json(product);
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid product ID" });
+
+      const input = api.products.update.input.parse(req.body);
+
+      // Verify product exists before updating
+      const existing = await storage.getProduct(id);
+      if (!existing) return res.status(404).json({ message: "Product not found" });
+
+      const product = await storage.updateProduct(id, input);
+      res.json(product);
+    } catch (err) {
+      console.error("Error updating product:", err);
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Server error" });
+      }
+    }
   });
 
   app.delete(api.products.delete.path, isAdmin, async (req, res) => {
-    await storage.deleteProduct(Number(req.params.id));
-    res.status(204).send();
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid product ID" });
+      await storage.deleteProduct(id);
+      res.status(204).send();
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      res.status(500).json({ message: "Server error" });
+    }
   });
 
   // =====================
   // PURCHASE ROUTES
   // =====================
   app.get(api.purchases.list.path, isAuthenticated, async (req, res) => {
-    res.json(await storage.getPurchases(req.session.userId as number));
+    try {
+      res.json(await storage.getPurchases(req.session.userId as number));
+    } catch (err) {
+      console.error("Error listing purchases:", err);
+      res.status(500).json({ message: "Failed to fetch purchases" });
+    }
   });
 
   app.post(api.purchases.create.path, isAuthenticated, async (req, res) => {
-    const { productIds } = api.purchases.create.input.parse(req.body);
+    try {
+      const { productIds } = api.purchases.create.input.parse(req.body);
 
-    for (const productId of productIds) {
-      await storage.createPurchase({
-        userId: req.session.userId as number,
-        productId,
-      });
+      // Validate that all products exist before creating purchases
+      for (const productId of productIds) {
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(400).json({ message: `Product with ID ${productId} not found` });
+        }
+      }
+
+      for (const productId of productIds) {
+        await storage.createPurchase({
+          userId: req.session.userId as number,
+          productId,
+        });
+      }
+
+      res.status(201).json({ message: "Purchases recorded" });
+    } catch (err) {
+      console.error("Error creating purchases:", err);
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Server error" });
+      }
     }
+  });
 
-    res.status(201).json({ message: "Purchases recorded" });
+  app.delete(api.purchases.delete.path, isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid purchase ID" });
+      await storage.deletePurchase(id);
+      res.status(204).send();
+    } catch (err) {
+      console.error("Error deleting purchase:", err);
+      res.status(500).json({ message: "Server error" });
+    }
   });
 
   // =====================
@@ -226,56 +320,58 @@ export async function registerRoutes(
 }
 
 // =====================
-// FINAL SEED FUNCTION
+// SEED FUNCTION — ensures demo products with correct QR codes always exist
 // =====================
 async function seedDatabase() {
-  const existing = await storage.getProducts();
-  if (existing.length > 0) return;
+  try {
+    const toYmd = (d: Date) => d.toISOString().slice(0, 10);
 
-  console.log("Seeding database...");
+    const seedProducts = [
+      {
+        name: "Fresh Milk",
+        price: 250,
+        manufacturingDate: "2023-10-25",
+        expiryDate: toYmd(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+        ingredients: ["Whole Milk", "Vitamin D3"],
+        nutritionalInfo: { calories: 150, fat: "8g", protein: "8g" },
+        qrCodeId: "prod_milk_001",
+        batchId: "B-MILK-1",
+      },
+      {
+        name: "Organic Bread",
+        price: 400,
+        manufacturingDate: "2023-10-26",
+        expiryDate: toYmd(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+        ingredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
+        nutritionalInfo: { calories: 100, carbs: "20g", fiber: "5g" },
+        qrCodeId: "prod_bread_002",
+        batchId: "B-BREAD-1",
+      },
+      {
+        name: "Expired Yogurt",
+        price: 150,
+        manufacturingDate: "2023-09-01",
+        expiryDate: toYmd(new Date(Date.now() - 24 * 60 * 60 * 1000)),
+        ingredients: ["Milk", "Live Cultures", "Strawberry"],
+        nutritionalInfo: { calories: 90, sugar: "12g" },
+        qrCodeId: "prod_yogurt_003",
+        batchId: "B-YOG-1",
+      },
+    ];
 
-  const toYmd = (d: Date) => d.toISOString().slice(0, 10);
+    // For each seed product, ensure it exists by QR code.
+    // If it doesn't exist, create it.
+    for (const seed of seedProducts) {
+      const existing = await storage.getProductByQr(seed.qrCodeId);
+      if (!existing) {
+        console.log(`Seeding missing product: ${seed.name} (${seed.qrCodeId})`);
+        await storage.createProduct(seed);
+      }
+    }
 
-  await storage.createProduct({
-    name: "Fresh Milk",
-    price: 250,
-    manufacturingDate: "2023-10-25",
-    expiryDate: toYmd(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-    ingredients: ["Whole Milk", "Vitamin D3"],
-    nutritionalInfo: {
-      calories: 150,
-      fat: "8g",
-      protein: "8g",
-    },
-    qrCodeId: "prod_milk_001",
-  });
-
-  await storage.createProduct({
-    name: "Organic Bread",
-    price: 400,
-    manufacturingDate: "2023-10-26",
-    expiryDate: toYmd(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-    ingredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
-    nutritionalInfo: {
-      calories: 100,
-      carbs: "20g",
-      fiber: "5g",
-    },
-    qrCodeId: "prod_bread_002",
-  });
-
-  await storage.createProduct({
-    name: "Expired Yogurt",
-    price: 150,
-    manufacturingDate: "2023-09-01",
-    expiryDate: toYmd(new Date(Date.now() - 24 * 60 * 60 * 1000)),
-    ingredients: ["Milk", "Live Cultures", "Strawberry"],
-    nutritionalInfo: {
-      calories: 90,
-      sugar: "12g",
-    },
-    qrCodeId: "prod_yogurt_003",
-  });
-
-  console.log(" Database seeded successfully");
+    console.log("Seed check complete");
+  } catch (err) {
+    // Seed failure should NEVER crash the server
+    console.error("Seed error (non-fatal):", err);
+  }
 }

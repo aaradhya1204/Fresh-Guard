@@ -5,7 +5,7 @@ import { usePurchases } from "@/hooks/use-purchases";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExpiryAlert } from "@/components/ExpiryAlert";
-import { Loader2, ShoppingCart, Trash, Check } from "lucide-react";
+import { Loader2, ShoppingCart, Trash, Check, Plus, Minus } from "lucide-react";
 import { type Product } from "@shared/schema";
 import { differenceInDays, format, isPast, isValid } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -69,7 +69,34 @@ export default function TrolleyPage() {
     });
   };
 
+  const groupedCart = cart.reduce((acc, item) => {
+    const existing = acc.find((g) => g.product.id === item.id);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      acc.push({ product: item, quantity: 1 });
+    }
+    return acc;
+  }, [] as { product: Product; quantity: number }[]);
+
   const total = cart.reduce((sum, item) => sum + item.price, 0);
+
+  const addOne = (product: Product) => {
+    setCart([...cart, product]);
+  };
+
+  const removeOne = (productId: number) => {
+    const index = cart.findIndex((p) => p.id === productId);
+    if (index !== -1) {
+      const newCart = [...cart];
+      newCart.splice(index, 1);
+      setCart(newCart);
+    }
+  };
+
+  const removeAll = (productId: number) => {
+    setCart(cart.filter((p) => p.id !== productId));
+  };
 
   useEffect(() => {
     if (!scannedProduct) return;
@@ -142,7 +169,14 @@ export default function TrolleyPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900">{scannedProduct.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-2xl font-bold text-gray-900">{scannedProduct.name}</h3>
+                        {scannedProduct.batchId && (
+                          <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-md font-medium">
+                            Batch: {scannedProduct.batchId}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-3xl font-bold text-primary mt-1">₹{(scannedProduct.price / 100).toFixed(2)}</p>
                     </div>
                     <ExpiryAlert expiryDate={scannedProduct.expiryDate} size="lg" />
@@ -164,6 +198,36 @@ export default function TrolleyPage() {
                       })()}</span>
                     </div>
                   </div>
+
+                  {Boolean(scannedProduct.nutritionalInfo) && (
+                    <div className="text-sm">
+                      <span className="text-gray-500 block font-medium mb-1">Nutritional Info</span>
+                      {typeof scannedProduct.nutritionalInfo === 'object' && scannedProduct.nutritionalInfo !== null ? (
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(scannedProduct.nutritionalInfo as Record<string, any>).map(([key, value]) => (
+                            <span key={key} className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-1 rounded-md text-xs capitalize">
+                              <span className="font-medium opacity-75">{key.replace(/([A-Z])/g, ' $1').trim()}:</span> {String(value)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-900">{String(scannedProduct.nutritionalInfo)}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {scannedProduct.ingredients && scannedProduct.ingredients.length > 0 && (
+                    <div className="text-sm">
+                      <span className="text-gray-500 block font-medium mb-1">Ingredients</span>
+                      <div className="flex flex-wrap gap-1">
+                        {scannedProduct.ingredients.map((ing, i) => (
+                          <span key={i} className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-md border">
+                            {ing}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-2">
                     <Button variant="outline" className="flex-1" onClick={() => setScannedId(null)}>Cancel</Button>
@@ -196,19 +260,35 @@ export default function TrolleyPage() {
                   <p>Your trolley is empty</p>
                 </div>
               ) : (
-                cart.map((item, idx) => (
+                groupedCart.map((group, idx) => (
                   <div key={idx} className="flex justify-between items-center p-3 rounded-lg border bg-white hover:border-primary/30 transition-colors">
                     <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">₹{(item.price / 100).toFixed(2)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{group.product.name}</p>
+                        {group.product.batchId && (
+                          <span className="text-xs text-muted-foreground border px-1.5 rounded bg-gray-50">
+                            {group.product.batchId}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">₹{(group.product.price / 100).toFixed(2)}</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => {
-                      const newCart = [...cart];
-                      newCart.splice(idx, 1);
-                      setCart(newCart);
-                    }}>
-                      <Trash className="w-4 h-4" />
-                    </Button>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center border rounded-md">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => removeOne(group.product.id)}>
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-medium">{group.quantity}</span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => addOne(group.product)}>
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => removeAll(group.product.id)}>
+                        <Trash className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}

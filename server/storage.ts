@@ -26,6 +26,7 @@ export interface IStorage {
   // Purchase
   getPurchases(userId: number): Promise<{ purchase: Purchase; product: Product }[]>;
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  deletePurchase(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -105,6 +106,10 @@ export class DatabaseStorage implements IStorage {
   async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
     const [newPurchase] = await db.insert(purchases).values(purchase).returning();
     return newPurchase;
+  }
+
+  async deletePurchase(id: number): Promise<void> {
+    await db.delete(purchases).where(eq(purchases.id, id));
   }
 }
 

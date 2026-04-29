@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
 
@@ -36,5 +36,22 @@ export function usePurchases() {
     },
   });
 
-  return { purchases: list.data, isLoading: list.isLoading, create };
+  const remove = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(apiUrl(buildUrl(api.purchases.delete.path, { id })), {
+        method: api.purchases.delete.method,
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error("Failed to delete purchase");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.purchases.list.path] });
+      toast({ title: "Purchase removed", description: "The item has been deleted from your history" });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    },
+  });
+
+  return { purchases: list.data, isLoading: list.isLoading, create, remove };
 }

@@ -38,6 +38,8 @@ export function useAuth() {
       return api.auth.login.responses[200].parse(await res.json());
     },
     onSuccess: (user) => {
+      // Clear cache to prevent data leaking from a previous session
+      queryClient.clear();
       queryClient.setQueryData([api.auth.me.path], user);
       toast({
         title: "Welcome back!",
@@ -60,6 +62,8 @@ export function useAuth() {
       await fetch(apiUrl(api.auth.logout.path), { method: api.auth.logout.method, credentials: 'include' });
     },
     onSuccess: () => {
+      // Clear all sensitive data from cache on logout
+      queryClient.clear();
       queryClient.setQueryData([api.auth.me.path], null);
       setLocation('/');
       toast({

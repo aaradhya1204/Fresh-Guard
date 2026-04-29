@@ -6,6 +6,17 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+// =====================
+// PROCESS-LEVEL CRASH GUARDS
+// =====================
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION — keeping server alive:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("UNHANDLED REJECTION — keeping server alive:", reason);
+});
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -24,13 +35,26 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "1mb",
     verify: (req, _res, buf) => {
       (req as any).rawBody = buf;
     },
   })
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+
+// =====================
+// REQUEST TIMEOUT (30s)
+// =====================
+app.use((req, res, next) => {
+  res.setTimeout(30000, () => {
+    if (!res.headersSent) {
+      res.status(408).json({ message: "Request timeout" });
+    }
+  });
+  next();
+});
 
 // =====================
 // HEALTH CHECK (NO DB REQUIRED)
@@ -126,6 +150,24 @@ app.use((req, res, next) => {
     httpServer.listen(port, "0.0.0.0", () => {
       log(`serving on http://0.0.0.0:${port}`);
     });
+
+    // ---------- GRACEFUL SHUTDOWN ----------
+    const shutdown = (signal: string) => {
+      log(`${signal} received — shutting down gracefully...`);
+      httpServer.close(() => {
+        log("HTTP server closed");
+        process.exit(0);
+      });
+      // Force exit after 10s if connections don't close
+      setTimeout(() => {
+        log("Forcing exit after timeout");
+        process.exit(1);
+      }, 10000).unref();
+    };
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+
   } catch (error) {
     console.error("Fatal error during server startup:", error);
     process.exit(1);
