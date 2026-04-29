@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "author": "Aaradhya Vanakhade",
   "scripts": {
     "dev": "DATABASE_URL=postgresql://postgres:postgres@localhost/freshguard tsx server/index.ts",
     "build": "tsx script/build.ts",
